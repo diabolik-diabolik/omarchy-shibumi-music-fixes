@@ -63,7 +63,7 @@ NEW_SERVICE_PROPS = OLD_SERVICE_PROPS + '''  SuiteRuntime.Provider {
     implementationVersion: "0.2.4"
     owner: root
     host: root.shell
-    manifest: root.manifest
+    manifest: ({id: "damir.ytmusic", version: "0.2.4", kinds: ["service"]})
   }
 '''
 
