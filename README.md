@@ -38,6 +38,8 @@ plugin's setup instructions for Mopidy and sign-in.
   `G:damir.ytmusic`.
 - YouTube Music registers its service with Shibumi's explicit provider bridge,
   so the bar widget and login panel can read account state and call sign-in.
+- The sign-in card runs the auth command directly and shows its result inline,
+  so a hidden or unavailable terminal cannot make the button appear inert.
 - The TIDAL bar widget opens its player through Shibumi's approved summon path
   if its scoped service lookup is unavailable. Right click opens Now Playing.
 - `~/.config/omarchy/shell.json` gets the widget placements and compact TIDAL

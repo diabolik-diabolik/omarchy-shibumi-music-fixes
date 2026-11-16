@@ -15,6 +15,7 @@ TIDAL = CONFIG / "plugins/quickshell.tidal/qml/BarWidget.qml"
 RESPONSIVE = CONFIG / "plugins/hancore.shibumi.bar/core/ResponsiveLayout.js"
 SHIBUMI_RUNTIME = CONFIG / "plugins/hancore.shibumi.state/runtime/Runtime.qml"
 YTM_SERVICE = CONFIG / "plugins/damir.ytmusic/Service.qml"
+YTM_SIGNIN = CONFIG / "plugins/damir.ytmusic/components/SignInCard.qml"
 TIDAL_MANIFEST = CONFIG / "plugins/quickshell.tidal/manifest.json"
 YTM_MANIFEST = CONFIG / "plugins/damir.ytmusic/manifest.json"
 SHELL_CONFIG = CONFIG / "shell.json"
@@ -66,6 +67,58 @@ NEW_SERVICE_PROPS = OLD_SERVICE_PROPS + '''  SuiteRuntime.Provider {
     manifest: ({id: "damir.ytmusic", version: "0.2.4", kinds: ["service"]})
   }
 '''
+OLD_SIGNIN_IMPORTS = 'import QtQuick\nimport qs.Commons\n'
+NEW_SIGNIN_IMPORTS = 'import QtQuick\nimport Quickshell\nimport Quickshell.Io\nimport qs.Commons\n'
+OLD_SIGNIN_STATE = '  property bool expired: false\n'
+NEW_SIGNIN_STATE = '''  property bool expired: false
+  property bool authStarting: false
+  property string authMessage: ""
+  readonly property string authCommand: String(Qt.resolvedUrl("../bin/ytm"))
+    .replace(/^file:\/\//, "")
+
+  function startSignIn() {
+    if (authProcess.running) return
+    authMessage = "Checking your Chromium sign-in…"
+    authStarting = true
+    authProcess.running = true
+  }
+'''
+OLD_SIGNIN_BUTTON = '    onClicked: if (root.service) root.service.signIn()\n'
+NEW_SIGNIN_BUTTON = '    onClicked: root.startSignIn()\n'
+OLD_SIGNIN_FOOTER = '''  Text {
+    width: parent.width
+    textFormat: Text.PlainText
+    text: "Search and playback work without an account."'''
+NEW_SIGNIN_FOOTER = '''  Text {
+    width: parent.width
+    visible: root.authMessage !== ""
+    textFormat: Text.PlainText
+    text: root.authMessage
+    color: root.authStarting ? Qt.darker(root.foreground, 1.3)
+      : root.authMessage.indexOf("Signed in") === 0 ? Color.accent : Color.urgent
+    font.family: root.fontFamily
+    font.pixelSize: Style.font.bodySmall
+    wrapMode: Text.Wrap
+  }
+
+  Process {
+    id: authProcess
+    command: [root.authCommand, "auth"]
+    stdout: StdioCollector { id: authStdout; waitForEnd: true }
+    stderr: StdioCollector { id: authStderr; waitForEnd: true }
+    onExited: function(exitCode) {
+      root.authStarting = false
+      var output = exitCode === 0 ? authStdout.text.trim() : authStderr.text.trim()
+      root.authMessage = output !== "" ? output
+        : exitCode === 0 ? "Signed in. YouTube Music is ready."
+        : "Sign-in failed. Check your Chromium session and try again."
+    }
+  }
+
+  Text {
+    width: parent.width
+    textFormat: Text.PlainText
+    text: "Search and playback work without an account."'''
 
 
 def backup(path: Path) -> Path:
@@ -147,7 +200,7 @@ def update_shell_config() -> None:
 
 def main() -> int:
     required = (TIDAL_MANIFEST, YTM_MANIFEST, TIDAL, RESPONSIVE,
-                SHIBUMI_RUNTIME, YTM_SERVICE, SHELL_CONFIG)
+                SHIBUMI_RUNTIME, YTM_SERVICE, YTM_SIGNIN, SHELL_CONFIG)
     missing = [path for path in required if not path.is_file()]
     if missing:
         print("Install Shibumi, TIDAL, and YouTube Music before applying these fixes:", file=sys.stderr)
@@ -164,6 +217,14 @@ def main() -> int:
                      "YouTube Music Shibumi provider import")
         replace_once(YTM_SERVICE, OLD_SERVICE_PROPS, NEW_SERVICE_PROPS,
                      "YouTube Music Shibumi service registration")
+        replace_once(YTM_SIGNIN, OLD_SIGNIN_IMPORTS, NEW_SIGNIN_IMPORTS,
+                     "YouTube Music inline sign-in process imports")
+        replace_once(YTM_SIGNIN, OLD_SIGNIN_STATE, NEW_SIGNIN_STATE,
+                     "YouTube Music sign-in state")
+        replace_once(YTM_SIGNIN, OLD_SIGNIN_BUTTON, NEW_SIGNIN_BUTTON,
+                     "YouTube Music sign-in button action")
+        replace_once(YTM_SIGNIN, OLD_SIGNIN_FOOTER, NEW_SIGNIN_FOOTER,
+                     "YouTube Music inline sign-in feedback")
         update_shell_config()
     except (OSError, ValueError, RuntimeError) as error:
         print(f"Install stopped: {error}", file=sys.stderr)
