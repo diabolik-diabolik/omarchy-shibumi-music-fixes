@@ -13,6 +13,8 @@ HOME = Path.home()
 CONFIG = Path(os.environ.get("XDG_CONFIG_HOME", HOME / ".config")) / "omarchy"
 TIDAL = CONFIG / "plugins/quickshell.tidal/qml/BarWidget.qml"
 RESPONSIVE = CONFIG / "plugins/hancore.shibumi.bar/core/ResponsiveLayout.js"
+SHIBUMI_RUNTIME = CONFIG / "plugins/hancore.shibumi.state/runtime/Runtime.qml"
+YTM_SERVICE = CONFIG / "plugins/damir.ytmusic/Service.qml"
 TIDAL_MANIFEST = CONFIG / "plugins/quickshell.tidal/manifest.json"
 YTM_MANIFEST = CONFIG / "plugins/damir.ytmusic/manifest.json"
 SHELL_CONFIG = CONFIG / "shell.json"
@@ -45,6 +47,25 @@ NEW_TIDAL_HANDLER = '''    onClicked: function(mouse) {
 OLD_VISIBILITY = '  return ["G1", "G2", "G6", "G8", "G11", "G14"].indexOf(id) >= 0'
 NEW_VISIBILITY = '''  return ["G1", "G2", "G6", "G8", "G11", "G14",
     "G:quickshell.tidal", "G:damir.ytmusic"].indexOf(id) >= 0'''
+
+OLD_PROVIDER_IDS = '''    "hancore.shibumi.brightness", "hancore.shibumi.bluetooth",
+    "hancore.shibumi.storage"
+  ]'''
+NEW_PROVIDER_IDS = '''    "hancore.shibumi.brightness", "hancore.shibumi.bluetooth",
+    "hancore.shibumi.storage", "damir.ytmusic"
+  ]'''
+OLD_SERVICE_IMPORT = 'import "YtmModel.js" as Model\n'
+NEW_SERVICE_IMPORT = OLD_SERVICE_IMPORT + 'import "../hancore.shibumi.state/runtime" as SuiteRuntime\n'
+OLD_SERVICE_PROPS = '  property var shell: null\n  property var manifest: null\n'
+NEW_SERVICE_PROPS = OLD_SERVICE_PROPS + '''  SuiteRuntime.Provider {
+    id: runtimeProvider
+    pluginId: "damir.ytmusic"
+    implementationVersion: "0.2.4"
+    owner: root
+    host: root.shell
+    manifest: root.manifest
+  }
+'''
 
 
 def backup(path: Path) -> Path:
@@ -125,7 +146,8 @@ def update_shell_config() -> None:
 
 
 def main() -> int:
-    required = (TIDAL_MANIFEST, YTM_MANIFEST, TIDAL, RESPONSIVE, SHELL_CONFIG)
+    required = (TIDAL_MANIFEST, YTM_MANIFEST, TIDAL, RESPONSIVE,
+                SHIBUMI_RUNTIME, YTM_SERVICE, SHELL_CONFIG)
     missing = [path for path in required if not path.is_file()]
     if missing:
         print("Install Shibumi, TIDAL, and YouTube Music before applying these fixes:", file=sys.stderr)
@@ -136,6 +158,12 @@ def main() -> int:
     try:
         replace_once(TIDAL, OLD_TIDAL_HANDLER, NEW_TIDAL_HANDLER, "TIDAL click fallback")
         replace_once(RESPONSIVE, OLD_VISIBILITY, NEW_VISIBILITY, "Shibumi narrow-stage visibility")
+        replace_once(SHIBUMI_RUNTIME, OLD_PROVIDER_IDS, NEW_PROVIDER_IDS,
+                     "Shibumi YouTube Music service bridge")
+        replace_once(YTM_SERVICE, OLD_SERVICE_IMPORT, NEW_SERVICE_IMPORT,
+                     "YouTube Music Shibumi provider import")
+        replace_once(YTM_SERVICE, OLD_SERVICE_PROPS, NEW_SERVICE_PROPS,
+                     "YouTube Music Shibumi service registration")
         update_shell_config()
     except (OSError, ValueError, RuntimeError) as error:
         print(f"Install stopped: {error}", file=sys.stderr)

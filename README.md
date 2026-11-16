@@ -1,8 +1,9 @@
 # Omarchy Shibumi music fixes
 
 Small compatibility fixes for keeping TIDAL and YouTube Music visible in
-Shibumi's narrow bar layout, and opening TIDAL when its bar widget cannot
-resolve its service through Shibumi's scoped host.
+Shibumi's narrow bar layout, opening TIDAL when its bar widget cannot resolve
+its service, and connecting YouTube Music's service to Shibumi so its account
+and library controls work.
 
 ## Requirements
 
@@ -35,6 +36,8 @@ plugin's setup instructions for Mopidy and sign-in.
 
 - Shibumi's final responsive stage retains `G:quickshell.tidal` and
   `G:damir.ytmusic`.
+- YouTube Music registers its service with Shibumi's explicit provider bridge,
+  so the bar widget and login panel can read account state and call sign-in.
 - The TIDAL bar widget opens its player through Shibumi's approved summon path
   if its scoped service lookup is unavailable. Right click opens Now Playing.
 - `~/.config/omarchy/shell.json` gets the widget placements and compact TIDAL
